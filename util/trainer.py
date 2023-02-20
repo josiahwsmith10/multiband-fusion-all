@@ -1,0 +1,149 @@
+import torch
+import time
+import os
+
+from util.saver import SaveModel
+from util.common import make_optimizer
+
+class Trainer():
+    def __init__(self, args, data, model, loss):
+        print('Making the trainer...')
+        self.args = args
+        
+        # Number of samples of GT high resolution signal
+        self.N_HR = data.mr.Nk_fb
+        
+        self.loader_train = torch.utils.data.DataLoader(data.dataset_train, 
+                                                    batch_size=args.batch_size, 
+                                                    shuffle=True, 
+                                                    pin_memory=False,
+                                                    num_workers=0)
+        
+        self.loader_val = torch.utils.data.DataLoader(data.dataset_val, 
+                                                    batch_size=args.batch_size, 
+                                                    shuffle=True, 
+                                                    pin_memory=False,
+                                                    num_workers=0)
+        
+        self.batches_per_epoch = len(self.loader_train)
+        self.model = model.to(args.device)
+        self.loss = loss
+        self.optimizer = make_optimizer(args, self.model)
+        
+        self.error_last = 1e8
+        
+        self.logs = {'log loss min': torch.inf, 'val_log loss min': torch.inf, 'log loss max': -torch.inf, 'val_log loss max': -torch.inf}
+        
+        self.save_path = "./saved/models/" + args.model_name + "/"
+        os.mkdir(self.save_path)
+        
+    def train(self):
+        """Trains one epoch."""
+        
+        #torch.cuda.empty_cache()
+        
+        # Training phase
+        self.loss.step()
+        
+        self.loss.start_log()
+        self.model.train()
+        
+        running_loss = 0.0
+        
+        self.tic = time.time()
+            
+        for batch, (lr, hr) in enumerate(self.loader_train):
+            # lr - low resolution (feature) (batch_size x N_HR)
+            # hr - high resolution (label) (batch_size x N_HR)
+            
+            # Zero gradients every batch
+            self.optimizer.zero_grad()
+            
+            # Forward pass
+            sr = self.model(lr)
+            
+            # Compute loss and backward pass
+            loss = self.loss(sr, hr) 
+            loss.backward()
+            
+            # Adjust learning weights
+            self.optimizer.step()
+            
+            # Accumulate loss
+            running_loss += loss
+            
+        self.logs['log loss'] = 1000 / (batch + 1) * running_loss.cpu().detach().numpy()
+        self.loss.end_log(len(self.loader_train))
+        self.error_last = self.loss.log[-1, -1]
+        self.optimizer.schedule()
+        
+        # Validation phase
+        with torch.no_grad():
+            # Somehow breaks everything
+            # self.model.eval()
+            running_loss = 0.0
+                
+            for batch, (lr, hr) in enumerate(self.loader_val):
+                # lr - low resolution (feature) (batch_size x N_HR)
+                # hr - high resolution (label) (batch_size x N_HR)
+
+                # Forward pass
+                sr = self.model(lr)
+
+                # Compute loss
+                loss = self.loss(sr, hr)
+                
+                # Accumulate loss
+                running_loss += loss
+                
+            self.logs['val_log loss'] = 1000 / (batch + 1) * running_loss.cpu().detach().numpy()
+        
+        self.print_loss()
+        self.save_checkpoint()
+        
+        self.model.train_loss.append(self.logs['log loss'])
+        self.model.val_loss.append(self.logs['val_log loss'])
+    
+    def print_loss(self):
+        """Prints the loss in readable format during training."""
+        
+        # Leave if print_every is 0 (never print loss)
+        if self.args.print_every == 0:
+            return
+        
+        # Leave if not the right epoch
+        epoch = self.optimizer.get_last_epoch()
+        if epoch % self.args.print_every != 0:
+            return
+            
+        if self.logs['log loss'] < self.logs['log loss min']:
+            self.logs['log loss min'] = self.logs['log loss']
+        if self.logs['log loss'] > self.logs['log loss max']:
+            self.logs['log loss max'] = self.logs['log loss']
+        if self.logs['val_log loss'] < self.logs['val_log loss min']:
+            self.logs['val_log loss min'] = self.logs['val_log loss']
+        if self.logs['val_log loss'] > self.logs['val_log loss max']:
+            self.logs['val_log loss max'] = self.logs['val_log loss']
+        
+        print(f"epoch {epoch} finished in {time.time() - self.tic:.3f} sec")
+        print(f"training \t min:{self.logs['log loss min']:.3f}, max:{self.logs['log loss max']:.3f}, cur:{self.logs['log loss']:.3f}")
+        print(f"validation \t min:{self.logs['val_log loss min']:.3f}, max:{self.logs['val_log loss max']:.3f}, cur:{self.logs['val_log loss']:.3f}\n")
+        
+    def save_checkpoint(self):
+        """Saves checkpoint of the model at current epoch"""
+        
+        # Leave if save_every is 0 (never save model)
+        if self.args.save_every == 0:
+            return
+        
+        # Leave if not the right epoch
+        epoch = self.optimizer.get_last_epoch()
+        if epoch % self.args.save_every != 0:
+            return
+        
+        # Save model
+        SaveModel(args=self.args, model=self.model, loss=self.loss, trainer=self, PATH=self.save_path + f"epoch{epoch}_{self.args.model_name}.pt")
+        
+    def terminate(self):
+        epoch = self.optimizer.get_last_epoch()
+        return epoch >= self.args.epochs
