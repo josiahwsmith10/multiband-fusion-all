@@ -6,6 +6,8 @@ from util.option import args
 from model.layers import naive_complex_default_conv1d, complex_default_conv1d, fast_complex_default_conv1d
 from model.common import CPLX
 
+from util.loss import Loss
+
 def main_kRNet():
     m = kRNet(args)
     
@@ -79,6 +81,22 @@ def test_complex_gradient():
         #print("c  bias:", c.conv.bias.squeeze().detach().numpy())
         #print("nc bias:", nc.conv_r.bias.squeeze().detach().numpy() + 1j*nc.conv_i.bias.squeeze().detach().numpy())
 
+def test_advanced_loss():
+    args.loss = '1*SL1+1*iSL1'
+    ll = Loss(args)
+    
+    ll.step()
+    ll.start_log()
+    
+    sr = torch.randn(10, 10, dtype=torch.complex64)
+    hr = sr.clone() + 1
+    
+    ii = [sr] * 5
+    
+    print("loss=, ", ll(sr, hr, ii))
+    
+
 if __name__ == "__main__":
     #main_kRNet()
-    test_complex_gradient()
+    #test_complex_gradient()
+    test_advanced_loss()

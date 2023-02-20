@@ -5,7 +5,7 @@ from uuid import uuid4
 
 parser = argparse.ArgumentParser(description='kR-Net')
 
-# Add arguments using the add_argument method
+# Model-related arguments
 parser.add_argument('--model', type=str, default='kR-Net',
                     help='Model type')
 
@@ -30,13 +30,15 @@ parser.add_argument('--kernel_size', type=int, default=5,
 parser.add_argument('--res_scale', type=float, default=0.8,
                     help='Residual scaling factor')
 
-parser.add_argument('--n_res_blocks', type=int, default=8,
-                    help='Number of residual blocks')
-
 parser.add_argument('--precision', type=str, default='single',
                     help='Precision: single or half')
 
-parser.add_argument('--loss', type=str, default='1*L1',
+# Used for kR-Net
+parser.add_argument('--n_res_blocks', type=int, default=8,
+                    help='Number of residual blocks')
+
+# Training-related arguments
+parser.add_argument('--loss', type=str, default='1*SL1',
                     help='Loss function: loss functions separated by "+", each loss function has [weight]*[loss_type]')
 
 parser.add_argument('--optimizer', type=str, default='ADAM',
@@ -72,11 +74,25 @@ parser.add_argument('--epochs', type=float, default=1e8,
 parser.add_argument('--batch_size', type=int, default=1024,
                     help='Batch size')
 
-parser.add_argument('--checkpoint', type=str, default='kR-Net-v1.pt',
+# Checkpoint to load previously trained model
+parser.add_argument('--checkpoint', type=str, default='',
                     help='Checkpoint name of model to load')
 
+# Data-related arguments
 parser.add_argument('--dataset', type=str, default='',
-                    help='Dataset name to load')
+                    help='Dataset name to load (dataset_60GHz_77GHz_1048576_2048_Nt64.mrd)')
+
+parser.add_argument('--num_train', type=int, default=1048576,
+                    help='Number of training samples')
+
+parser.add_argument('--num_val', type=int, default=2048,
+                    help='Number of validation samples')
+
+parser.add_argument('--num_test', type=int, default=2048,
+                    help='Number of test samples')
+
+parser.add_argument('--Nt', type=int, default=64,
+                    help='Number of random target scatter components')
 
 # Parse the arguments
 args = parser.parse_args()

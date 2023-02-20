@@ -60,10 +60,10 @@ class Trainer():
             self.optimizer.zero_grad()
             
             # Forward pass
-            sr = self.model(lr)
-            
-            # Compute loss and backward pass
-            loss = self.loss(sr, hr) 
+            sr, intermediate = self.model(lr)
+
+            # Compute loss
+            loss = self.loss(sr, hr, intermediate)
             loss.backward()
             
             # Adjust learning weights
@@ -88,10 +88,10 @@ class Trainer():
                 # hr - high resolution (label) (batch_size x N_HR)
 
                 # Forward pass
-                sr = self.model(lr)
+                sr, intermediate = self.model(lr)
 
                 # Compute loss
-                loss = self.loss(sr, hr)
+                loss = self.loss(sr, hr, intermediate)
                 
                 # Accumulate loss
                 running_loss += loss

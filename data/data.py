@@ -34,6 +34,16 @@ class MultiRadarDataset(torch.utils.data.Dataset):
     def __len__(self):
         return self.N
     
+    def truncate(self, N):
+        if N > self.N:
+            print(f"Warning: N > self.N. Will not truncate. Dataset length is {self.N}.")
+            return
+            
+        self.X = self.X[:N]
+        self.Y = self.Y[:N]
+        
+        self.N = N
+    
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
@@ -57,16 +67,10 @@ class MultiRadarData:
         
     def create_generic_dataset(self):        
         if self.args.xyz_str.lower() == 'xy':
-            self.X = self.X.to(self.device)
-            self.Y = self.Y.to(self.device)
-            
-            return MultiRadarDataset(self.X, self.Y, self.args)
+            return MultiRadarDataset(self.X, self.Y, self.args).to(self.device)
             #return torch.utils.data.TensorDataset(self.X, self.Y)
         elif self.args.xyz_str.lower() == 'xz':
-            self.X = self.X.to(self.device)
-            self.Z = self.Z.to(self.device)
-            
-            return MultiRadarDataset(self.X, self.Z, self.args)
+            return MultiRadarDataset(self.X, self.Z, self.args).to(self.device)
             #return torch.utils.data.TensorDataset(self.X, self.Z)
         
     def create_dataset_train(self, num_train, max_targets):
@@ -182,7 +186,7 @@ class MultiRadarData:
             (x, y) = data.dataset_test[ind_rand]
             x = x.view(1, -1)
 
-            y_pred = model.model(x).cpu().detach().numpy()
+            y_pred = model.model(x)[0].cpu().detach().numpy()
             y = y.cpu().detach().numpy()
             x = x.cpu().detach().numpy().squeeze()
             
@@ -281,8 +285,11 @@ class MultiRadarData:
         print(f"Loading data from {PATH}")
         data_save = torch.load(PATH)
         
-        assert self.args.xyz_str == data_save['args']['xyz_str'], 'xyz_str must be the same as saved data!'
+        assert self.args.xyz_str == data_save['args'].xyz_str, 'xyz_str must be the same as saved data!'
         self.dataset_train = data_save['dataset_train']
         self.dataset_val = data_save['dataset_val']
+        self.dataset_test = data_save['dataset_test'] if 'dataset_test' in data_save else None
         
-        
+        self.dataset_train.truncate(self.args.num_train)
+        self.dataset_val.truncate(self.args.num_val)
+        self.dataset_test.truncate(self.args.num_test) if self.dataset_test is not None else None

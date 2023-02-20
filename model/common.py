@@ -55,6 +55,9 @@ class CPLX:
     def abs(self):
         return self.complex.abs()
     
+    def clone(self):
+        return CPLX(self.real.clone(), self.imag.clone())
+    
     @property
     def shape(self):
         assert self.real.shape == self.imag.shape
