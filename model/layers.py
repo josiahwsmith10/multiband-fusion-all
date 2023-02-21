@@ -20,7 +20,7 @@ class CVConv1d(nn.Module):
         
         self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, dtype=torch.complex64)
         
-    def forward(self, x):
+    def forward(self, x: CPLX) -> CPLX:
         x = self.conv(x.complex)
         return CPLX(x.real, x.imag)
     
@@ -42,7 +42,7 @@ class NaiveCVConv1d(nn.Module):
         self.conv_r = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
         self.conv_i = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
         
-    def forward(self, x):
+    def forward(self, x: CPLX) -> CPLX:
         return CPLX(self.conv_r(x.real) - self.conv_i(x.imag), self.conv_r(x.imag) + self.conv_i(x.real))
     
 def fast_complex_default_conv1d(in_channels, out_channels, kernel_size, bias=False):
@@ -52,7 +52,7 @@ def fast_complex_default_conv1d(in_channels, out_channels, kernel_size, bias=Fal
         kernel_size=kernel_size, padding=kernel_size//2, bias=bias
     )
 
-def fast_complex_conv(conv, input, weight, stride=1, padding=0, dilation=1):
+def fast_complex_conv(conv, input: CPLX, weight, stride=1, padding=0, dilation=1) -> CPLX:
     """Fast complex-valued convolution."""
     n_out = int(weight.shape[0])
 
@@ -76,7 +76,7 @@ class FastCVConv1d(nn.Module):
         self.conv_i = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
         self.Fconv = torch.functional.F.conv1d
         
-    def forward(self, x):
+    def forward(self, x: CPLX) -> CPLX:
         return fast_complex_conv(self.Fconv, x, CPLX(self.conv_r.weight, self.conv_i.weight), self.conv_r.stride, self.conv_r.padding, self.conv_r.dilation)
 
 class CPReLU(nn.Module):
@@ -86,9 +86,8 @@ class CPReLU(nn.Module):
         self.cprelu_r = nn.PReLU()
         self.cprelu_i = nn.PReLU()
         
-    def forward(self, x):
+    def forward(self, x: CPLX) -> CPLX:
         return CPLX(self.cprelu_r(x.real), self.cprelu_i(x.imag))
-        #return self.cprelu_r(x.real) + 1j*self.cprelu_i(x.imag)
 
 class CReLU(nn.Module):
     """Complex-Valued Rectified Linear Unit."""
@@ -97,8 +96,8 @@ class CReLU(nn.Module):
         self.relu_r = nn.ReLU(inplace)
         self.relu_i = nn.ReLU(inplace)
         
-    def forward(self, x):
-        return self.relu_r(x.real) + 1j*self.relu_i(x.imag)
+    def forward(self, x: CPLX) -> CPLX:
+        return CPLX(self.relu_r(x.real), self.relu_i(x.imag))
     
 class CTanh(nn.Module):
     """Complex-Valued Hyperbolic Tangent."""
@@ -107,8 +106,8 @@ class CTanh(nn.Module):
         self.tanh_r = nn.Tanh()
         self.tanh_i = nn.Tanh()
         
-    def forward(self, x):
-        return self.tanh_r(x.real) + 1j*self.relu_i(x.imag)
+    def forward(self, x: CPLX) -> CPLX:
+        return CPLX(self.tanh_r(x.real), self.relu_i(x.imag))
 
 class FFTBlock(nn.Module):
     """FFT Block."""
@@ -119,7 +118,7 @@ class FFTBlock(nn.Module):
         self.dim = dim
         self.norm = norm
         
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return torch.fft.fft(x, n=self.n, dim=self.dim, norm=self.norm)
     
 class IFFTBlock(nn.Module):
@@ -131,7 +130,7 @@ class IFFTBlock(nn.Module):
         self.dim = dim
         self.norm = norm
         
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return torch.fft.ifft(x, n=self.n, dim=self.dim, norm=self.norm)
 
 class ComplexValuedResBlock(nn.Module):
@@ -154,7 +153,7 @@ class ComplexValuedResBlock(nn.Module):
         self.body = nn.Sequential(*m)
         self.res_scale = res_scale
 
-    def forward(self, x):
+    def forward(self, x: CPLX) -> CPLX:
         # Complex residual block forward
         res = self.body(x).mul(self.res_scale)
         res.add(x)
@@ -179,7 +178,7 @@ class kRBlock(nn.Module):
         
         self.body = nn.Sequential(*m)
 
-    def forward(self, x):
+    def forward(self, x: CPLX) -> CPLX:
         return self.body(x)
 
 def kRBlockNEW(conv, in_channels, out_channels, kernel_size, bias=False, act=CTanh(), res_scale=1, n_res_blocks=8):

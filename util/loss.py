@@ -91,7 +91,7 @@ class SplitL1(nn.Module):
         super().__init__()
         self.L1 = nn.L1Loss()
         
-    def forward(self, x, y):
+    def forward(self, x: CPLX, y: CPLX):
         return self.L1(x.real, y.real) + self.L1(x.imag, y.imag)
     
 class SplitMSE(nn.Module):
@@ -99,7 +99,7 @@ class SplitMSE(nn.Module):
         super().__init__()
         self.MSE = nn.MSELoss()
         
-    def forward(self, x, y):
+    def forward(self, x: CPLX, y: CPLX):
         return self.MSE(x.real, y.real) + self.MSE(x.imag, y.imag)
 
 class Loss(nn.modules.loss._Loss):
@@ -112,13 +112,21 @@ class Loss(nn.modules.loss._Loss):
         
         self.loss = []
         self.loss_module = nn.ModuleList()
+        one_benchmark_loss = False
         for loss in args.loss.split('+'):
             weight, loss_type = loss.split('*')
             if loss_type[0] == 'i':
+                # Loss is applied to intermediate outputs
                 intermediate_loss = True
+                loss_type = loss_type[1:]
+            elif loss_type[0] == 'b':
+                # Loss is benchmark loss, applied to final output
+                assert not one_benchmark_loss, "Only one benchmark loss allowed"
+                benchmark_loss = True
                 loss_type = loss_type[1:]
             else:
                 intermediate_loss = False
+                benchmark_loss = False
                 
             if loss_type == "SMSE":
                 loss_function = SplitMSE()
@@ -126,10 +134,16 @@ class Loss(nn.modules.loss._Loss):
                 loss_function = SplitL1()
             elif loss_type == "PerpSSIM":
                 loss_function = PerpLossSSIM()
-
+            
+            if intermediate_loss:
+                loss_type = 'i' + loss_type
+            if benchmark_loss:
+                loss_type = 'b' + loss_type
+            
             self.loss.append({
-                'type': loss_type if not intermediate_loss else 'i' + loss_type,
+                'type': loss_type,
                 'weight': float(weight),
+                'value': 0,
                 'function': loss_function}
             )
                 
@@ -151,59 +165,66 @@ class Loss(nn.modules.loss._Loss):
         for l in self.get_loss_module():
             if hasattr(l, 'scheduler'):
                 l.scheduler.step()
-
-    def start_log(self):
-        self.log = torch.cat((self.log, torch.zeros(1, len(self.loss))))
-
-    def end_log(self, n_batches):
-        self.log[-1].div_(n_batches)
-
-    def display_loss(self, batch):
-        n_samples = batch + 1
-        log = []
-        for l, c in zip(self.loss, self.log[-1]):
-            log.append('[{}: {:.4f}]'.format(l['type'], c / n_samples))
-
-        return ''.join(log)
-    
-    def plot_loss(self, apath, epoch):
-        axis = np.linspace(1, epoch, epoch)
-        for i, l in enumerate(self.loss):
-            label = '{} Loss'.format(l['type'])
-            fig = plt.figure()
-            plt.title(label)
-            plt.plot(axis, self.log[0:epoch, i].numpy(), label=label)
-            plt.legend()
-            plt.xlabel('Epochs')
-            plt.ylabel('Loss')
-            plt.grid(True)
-            plt.savefig(os.path.join(apath, 'loss_{}.pdf'.format(l['type'])))
-            
+                
     def get_loss_module(self):
         return self.loss_module
+
+    def start_log(self):
+        for l in self.loss:
+            l['value'] = 0
+
+    def end_log(self, n_batches: int):
+        losses = {}
+        for l in self.loss:
+            # Intermediate loss
+            if l['type'][0] == 'i':
+                l['value'] /= n_batches
+                losses['intermediate_' + l['type'][1:]] = l['value']
+                
+            # Benchmark loss
+            elif l['type'][0] == 'b':
+                l['value'] /= n_batches
+                benchmark_loss = 1000 * l['value']
+                losses[l['type'][1:]] = l['value']
+                
+            # Loss at output and total loss (if used)
+            else:
+                l['value'] /= n_batches
+                losses[l['type']] = l['value']
+                
+        return benchmark_loss, losses
         
     def forward(self, sr, hr, intermediate=None):
         # sr - super resolution (prediction)
         # hr - high resolution (label)
         losses = []
-        for i, l in enumerate(self.loss):
-            # Loss at output
-            if l['function'] is not None and l['type'][0] != 'i':
-                loss = l['function'](sr, hr)
-                effective_loss = l['weight'] * loss
-                losses.append(effective_loss)
-                self.log[-1, i] += effective_loss.item()
-            
+        for l in self.loss:
             # Intermediate loss
             if l['function'] is not None and intermediate is not None and l['type'][0] == 'i':
                 loss = sum([l['function'](inter, hr) for inter in intermediate])
                 effective_loss = l['weight'] * loss
                 losses.append(effective_loss)
-                self.log[-1, i] += effective_loss.item()
+                l['value'] += effective_loss.item()
+                
+            # Benchmark loss
+            elif l['function'] is not None and l['type'][0] == 'b':
+                loss = l['function'](sr, hr)
+                effective_loss = l['weight'] * loss
+                losses.append(effective_loss)
+                l['value'] += effective_loss.item()
+                
+            # Loss at output
+            elif l['function'] is not None and l['type'][0] != 'i':
+                loss = l['function'](sr, hr)
+                effective_loss = l['weight'] * loss
+                losses.append(effective_loss)
+                l['value'] += effective_loss.item()
                 
         loss_sum = sum(losses)
+        
+        # Store total loss
         if len(self.loss) > 1:
-            self.log[-1, -1] += loss_sum.item()
+            self.loss[-1]['value'] += loss_sum.item()
             
         return loss_sum
 

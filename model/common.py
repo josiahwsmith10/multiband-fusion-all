@@ -1,7 +1,7 @@
 import torch
 
-class CPLX:
-    def __init__(self, r, i):
+class CPLX():
+    def __init__(self, r: torch.Tensor, i: torch.Tensor):
         self.real = r
         self.imag = i
     

@@ -1,12 +1,19 @@
 import torch
 import time
 import os
+import argparse
+from tqdm import tqdm
 
+from torch.utils.tensorboard import SummaryWriter
+
+from model import ComplexModel
+from data import MultiRadarData
+from util import Loss
 from util.saver import SaveModel
 from util.common import make_optimizer
 
 class Trainer():
-    def __init__(self, args, data, model, loss):
+    def __init__(self, args: argparse.Namespace, data: MultiRadarData, model: ComplexModel, loss: Loss, tb=True):
         print('Making the trainer...')
         self.args = args
         
@@ -30,12 +37,28 @@ class Trainer():
         self.loss = loss
         self.optimizer = make_optimizer(args, self.model)
         
-        self.error_last = 1e8
+        self.logs = {
+            'log loss min': torch.inf, 
+            'val_log loss min': torch.inf, 
+            'log loss max': -torch.inf, 
+            'val_log loss max': -torch.inf
+            }
         
-        self.logs = {'log loss min': torch.inf, 'val_log loss min': torch.inf, 'log loss max': -torch.inf, 'val_log loss max': -torch.inf}
-        
+        # Create directory to save model checkpoints
         self.save_path = "./saved/models/" + args.model_name + "/"
         os.mkdir(self.save_path)
+        
+        if tb:
+            print('Using tensorboard...')
+            self.use_tensorboard = True
+            
+            # Initialize tensorboard writer
+            self.writer = SummaryWriter(log_dir="./saved/tensorboard/" + args.model_name)
+            
+            #lr, _ = next(iter(self.loader_train))
+            #writer.add_graph(self.model.model, lr)
+        else:
+            self.use_tensorboard = False
         
     def train(self):
         """Trains one epoch."""
@@ -48,11 +71,10 @@ class Trainer():
         self.loss.start_log()
         self.model.train()
         
-        running_loss = 0.0
-        
         self.tic = time.time()
-            
-        for batch, (lr, hr) in enumerate(self.loader_train):
+        
+        print('Training phase for epoch ', self.optimizer.get_last_epoch())
+        for lr, hr in tqdm(self.loader_train):
             # lr - low resolution (feature) (batch_size x N_HR)
             # hr - high resolution (label) (batch_size x N_HR)
             
@@ -69,21 +91,13 @@ class Trainer():
             # Adjust learning weights
             self.optimizer.step()
             
-            # Accumulate loss
-            running_loss += loss
-            
-        self.logs['log loss'] = 1000 / (batch + 1) * running_loss.cpu().detach().numpy()
-        self.loss.end_log(len(self.loader_train))
-        self.error_last = self.loss.log[-1, -1]
+        self.logs['log loss'], self.logs['train losses'] = self.loss.end_log(len(self.loader_train))
         self.optimizer.schedule()
         
         # Validation phase
         with torch.no_grad():
-            # Somehow breaks everything
-            # self.model.eval()
-            running_loss = 0.0
-                
-            for batch, (lr, hr) in enumerate(self.loader_val):
+            self.loss.start_log()
+            for lr, hr in self.loader_val:
                 # lr - low resolution (feature) (batch_size x N_HR)
                 # hr - high resolution (label) (batch_size x N_HR)
 
@@ -93,10 +107,7 @@ class Trainer():
                 # Compute loss
                 loss = self.loss(sr, hr, intermediate)
                 
-                # Accumulate loss
-                running_loss += loss
-                
-            self.logs['val_log loss'] = 1000 / (batch + 1) * running_loss.cpu().detach().numpy()
+            self.logs['val_log loss'], self.logs['val losses'] = self.loss.end_log(len(self.loader_val))
         
         self.print_loss()
         self.save_checkpoint()
@@ -110,6 +121,21 @@ class Trainer():
         # Leave if print_every is 0 (never print loss)
         if self.args.print_every == 0:
             return
+        
+        # Always send to tensorboard if it is used
+        if self.use_tensorboard:
+            epoch = self.optimizer.get_last_epoch()
+            add_scalar = self.writer.add_scalar
+            
+            add_scalar('Benchmark/train', self.logs['log loss'], epoch)
+            add_scalar('Benchmark/val', self.logs['val_log loss'], epoch)
+            
+            for type, value in self.logs['train losses'].items():
+                add_scalar(f'{type}/train', value, epoch)
+            
+            for type, value in self.logs['val losses'].items():
+                add_scalar(f'{type}/val', value, epoch)
+            self.writer.flush()
         
         # Leave if not the right epoch
         epoch = self.optimizer.get_last_epoch()
@@ -147,3 +173,4 @@ class Trainer():
     def terminate(self):
         epoch = self.optimizer.get_last_epoch()
         return epoch >= self.args.epochs
+

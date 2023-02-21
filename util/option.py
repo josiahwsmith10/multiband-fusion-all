@@ -38,7 +38,7 @@ parser.add_argument('--n_res_blocks', type=int, default=8,
                     help='Number of residual blocks')
 
 # Training-related arguments
-parser.add_argument('--loss', type=str, default='1*SL1',
+parser.add_argument('--loss', type=str, default='1*bSL1',
                     help='Loss function: loss functions separated by "+", each loss function has [weight]*[loss_type]')
 
 parser.add_argument('--optimizer', type=str, default='ADAM',

@@ -1,10 +1,13 @@
 import os
-
+from typing import Tuple
+import argparse
 import torch
 import torch.optim as optim
 import torch.optim.lr_scheduler as lrs
 
-def min_max_norm(x, dim=-1):
+from model import ComplexModel
+
+def min_max_norm(x: torch.Tensor, dim=-1) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Computes the magnitude min-max norm."""
     
     x_mag = x.abs()
@@ -16,11 +19,11 @@ def min_max_norm(x, dim=-1):
     
     return (x - x_min)/(x_max - x_min), a, b
 
-def apply_linear_transform(x, a, b):
+def apply_linear_transform(x: torch.Tensor, a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """Applies a linear transformation to the input."""
     return a*x + b
 
-def make_optimizer(args, target):
+def make_optimizer(args: argparse.Namespace, target: ComplexModel):
     '''
         make optimizer and scheduler together
     '''

@@ -3,13 +3,17 @@ from scipy.constants import pi
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import argparse
+from typing import Tuple
 
+from model import ComplexModel
 from util.common import min_max_norm, apply_linear_transform
+from radar.multiradar import MultiRadar
 
 class MultiRadarDataset(torch.utils.data.Dataset):
     """MultiRadarDataset dataset."""
     
-    def __init__(self, X, Y, args):
+    def __init__(self, X: torch.Tensor, Y: torch.Tensor, args: argparse.Namespace):
         """
         Args:
             X (tensor): Input data (complex-valued tensor)
@@ -25,7 +29,7 @@ class MultiRadarDataset(torch.utils.data.Dataset):
         self.args = args
         self.device = args.device
         
-    def to(self, device):
+    def to(self, device) -> torch.utils.data.Dataset:
         self.X = self.X.to(device)
         self.Y = self.Y.to(device)
         
@@ -34,7 +38,7 @@ class MultiRadarDataset(torch.utils.data.Dataset):
     def __len__(self):
         return self.N
     
-    def truncate(self, N):
+    def truncate(self, N: int):
         if N > self.N:
             print(f"Warning: N > self.N. Will not truncate. Dataset length is {self.N}.")
             return
@@ -44,7 +48,7 @@ class MultiRadarDataset(torch.utils.data.Dataset):
         
         self.N = N
     
-    def __getitem__(self, idx):
+    def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:
         if torch.is_tensor(idx):
             idx = idx.tolist()
         
@@ -58,14 +62,14 @@ class MultiRadarDataset(torch.utils.data.Dataset):
         return lr, hr
 
 class MultiRadarData:
-    def __init__(self, multiradar, args, snr_range=[3, 50]):
+    def __init__(self, multiradar: MultiRadar, args: argparse.Namespace, snr_range=[3, 50]):
         self.mr = multiradar
         self.args = args
         self.device = args.device
         self.snr_range = snr_range
         self.batch_size = args.batch_size
         
-    def create_generic_dataset(self):        
+    def create_generic_dataset(self) -> torch.utils.data.Dataset:        
         if self.args.xyz_str.lower() == 'xy':
             return MultiRadarDataset(self.X, self.Y, self.args).to(self.device)
             #return torch.utils.data.TensorDataset(self.X, self.Y)
@@ -73,7 +77,7 @@ class MultiRadarData:
             return MultiRadarDataset(self.X, self.Z, self.args).to(self.device)
             #return torch.utils.data.TensorDataset(self.X, self.Z)
         
-    def create_dataset_train(self, num_train, max_targets):
+    def create_dataset_train(self, num_train: int, max_targets: int):
         self.max_targets = max_targets
         
         self.num_train = num_train
@@ -87,7 +91,7 @@ class MultiRadarData:
         
         self.dataset_train = self.create_generic_dataset()
         
-    def create_dataset_val(self, num_val, max_targets):
+    def create_dataset_val(self, num_val: int, max_targets: int):
         self.max_targets = max_targets
         
         self.num_val = num_val
@@ -101,7 +105,7 @@ class MultiRadarData:
         
         self.dataset_val = self.create_generic_dataset()
         
-    def create_dataset_test(self, num_test, max_targets):
+    def create_dataset_test(self, num_test: int, max_targets: int):
         self.max_targets = max_targets
         
         self.num_test = num_test
@@ -115,7 +119,7 @@ class MultiRadarData:
         
         self.dataset_test = self.create_generic_dataset()
        
-    def create_XY(self, num):
+    def create_XY(self, num: int):
         def linear_power(x, N):
             return torch.sqrt(1/N * torch.sum(torch.abs(x)**2))
         
@@ -174,16 +178,16 @@ class MultiRadarData:
         self.Z = Z
         self.SNR = SNR
      
-    def test_net(self, args, model, data):
+    def test_net(self, args: argparse.Namespace, model: ComplexModel):
         """Tests the network on the test set and plots the results."""
         
         def test_one(ind_rand=None):
             if ind_rand is None:
-                ind_rand = np.random.randint(0, data.num_test)
+                ind_rand = np.random.randint(0, self.num_test)
             
             print(f"Testing sample #{ind_rand} with SNR = {self.test_SNR[ind_rand]:.2f}")
 
-            (x, y) = data.dataset_test[ind_rand]
+            (x, y) = self.dataset_test[ind_rand]
             x = x.view(1, -1)
 
             y_pred = model.model(x)[0].cpu().detach().numpy()

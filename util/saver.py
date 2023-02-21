@@ -1,6 +1,10 @@
 import torch
+import argparse
 
-def SaveModel(args, model, loss, trainer, PATH):
+from model import ComplexModel
+from data import MultiRadarData
+
+def SaveModel(args: argparse.Namespace, model: ComplexModel, loss, trainer, PATH: str):
     checkpoint = {
         'model_state_dict': model.state_dict(),
         'optimizer_state_dict': trainer.optimizer.state_dict(),
@@ -17,7 +21,7 @@ class Saver():
     def __init__(self):
         pass
     
-    def Save(self, args, model, loss, trainer, PATH):
+    def Save(self, args: argparse.Namespace, model: ComplexModel, loss, trainer, PATH: str):
         checkpoint = {
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': trainer.optimizer.state_dict(),
@@ -30,7 +34,7 @@ class Saver():
         torch.save(checkpoint, PATH)
         print(f"Saved model to: {PATH}")
     
-    def Load(self, args, data, ModelClass, TrainerClass, PATH):
+    def Load(self, args: argparse.Namespace, data: MultiRadarData, ModelClass, LossClass, TrainerClass, PATH: str):
                 
         checkpoint = torch.load(PATH)
         
@@ -48,22 +52,31 @@ class Saver():
         assert args.precision == args_old.precision, 'precision must be the same as saved data!'
         
         model = ModelClass(args)
-        loss = checkpoint['loss']
-        trainer = TrainerClass(args, data, model, loss)
+        
+        # Create new loss
+        if LossClass is not None:
+            loss = LossClass(args)
+        else:
+            loss = None
+        
+        # Create new trainer
+        if TrainerClass is not None:
+            trainer = TrainerClass(args, data, model, loss)
+            trainer.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        else:
+            trainer = None
         
         model.load_state_dict(checkpoint['model_state_dict'])
         
         if 'train_loss' in checkpoint and 'val_loss' in checkpoint:
             model.train_loss = checkpoint['train_loss']
             model.val_loss = checkpoint['val_loss']
-        
-        trainer.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        
+
         model.eval()
         print(f"Loaded model from: {PATH}")
         return args, model, loss, trainer
     
-    def LoadModel(self, ModelClass, PATH):
+    def LoadModel(self, ModelClass, PATH: str):
         checkpoint = torch.load(PATH)
         
         args = checkpoint['args']

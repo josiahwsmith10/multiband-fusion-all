@@ -2,11 +2,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 from tqdm import tqdm
+import argparse
 
 from model.kRNet import kRNet
 
 class ComplexModel(nn.Module):
-    def __init__(self, args):
+    def __init__(self, args: argparse.Namespace):
         super(ComplexModel, self).__init__()
         
         self.args = args
@@ -24,7 +25,7 @@ class ComplexModel(nn.Module):
         if args.precision.lower() == 'half':
             self.model.half()
             
-    def forward(self, x):        
+    def forward(self, x):
         if self.training:
             return self.model(x)
         else:
