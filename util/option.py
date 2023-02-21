@@ -3,7 +3,7 @@ import torch
 from datetime import datetime
 from uuid import uuid4
 
-parser = argparse.ArgumentParser(description='kR-Net')
+parser = argparse.ArgumentParser(description='multiband-fusion-all')
 
 # Model-related arguments
 parser.add_argument('--model', type=str, default='kR-Net',

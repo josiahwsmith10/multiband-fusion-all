@@ -53,10 +53,11 @@ class Trainer():
             self.use_tensorboard = True
             
             # Initialize tensorboard writer
-            self.writer = SummaryWriter(log_dir="./saved/tensorboard/" + args.model_name)
+            self.writer = SummaryWriter(log_dir="./saved/models/" + args.model_name)
             
-            #lr, _ = next(iter(self.loader_train))
-            #writer.add_graph(self.model.model, lr)
+            # Save parameters
+            for arg, value in vars(args).items():
+                self.writer.add_text(arg, str(value))
         else:
             self.use_tensorboard = False
         

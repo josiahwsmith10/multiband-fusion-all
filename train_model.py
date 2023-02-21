@@ -7,7 +7,6 @@ mr = MultiRadar(f0=[60e9, 77e9], K=124.996e12, Nk=[64, 64], Nk_fb=336, fS=2000e3
 d = MultiRadarData(mr, args)
 
 args.dataset = 'dataset_60GHz_77GHz_16384_2048_Nt64.mrd'
-args.loss = '1*SMSE+1*bSL1'
 
 if args.dataset == '':
     d.create_dataset_train(args.num_train, args.Nt)

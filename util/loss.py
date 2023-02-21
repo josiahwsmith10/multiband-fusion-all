@@ -118,10 +118,12 @@ class Loss(nn.modules.loss._Loss):
             if loss_type[0] == 'i':
                 # Loss is applied to intermediate outputs
                 intermediate_loss = True
+                benchmark_loss = False
                 loss_type = loss_type[1:]
             elif loss_type[0] == 'b':
                 # Loss is benchmark loss, applied to final output
                 assert not one_benchmark_loss, "Only one benchmark loss allowed"
+                intermediate_loss = False
                 benchmark_loss = True
                 loss_type = loss_type[1:]
             else:
