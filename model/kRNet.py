@@ -4,8 +4,8 @@ import torch.nn as nn
 import argparse
 from typing import Tuple
 
-import cvtorch.nn as cvnn
 from cvtorch import CVTensor
+import cvtorch.nn as cvnn
 
 from model.common import select_act
 
