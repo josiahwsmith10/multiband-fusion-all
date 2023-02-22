@@ -33,9 +33,29 @@ parser.add_argument('--res_scale', type=float, default=0.8,
 parser.add_argument('--precision', type=str, default='single',
                     help='Precision: single or half')
 
-# Used for kR-Net
+# Used for kR-Blocks
 parser.add_argument('--n_res_blocks', type=int, default=8,
                     help='Number of residual blocks')
+
+# Used for SSCA-Net
+parser.add_argument('--n_head', type=int, default=4,
+                    help='Number of attention heads')
+
+parser.add_argument('--d_k', type=int, default=8,
+                    help='Dimension of key')
+
+parser.add_argument('--d_v', type=int, default=8,
+                    help='Dimension of value')
+
+parser.add_argument('--dropout', type=float, default=0.1,
+                    help='Dropout rate')
+
+# Used for Efficient Channel Attention Module
+parser.add_argument('--eca_b', type=int, default=1,
+                    help='b hyper-parameter for adaptive kernel size formulation in ECA')
+
+parser.add_argument('--eca_gamma', type=float, default=2,
+                    help='gamma hyper-parameter for adaptive kernel size formulation in ECA')
 
 # Training-related arguments
 parser.add_argument('--loss', type=str, default='1*bSL1',
@@ -93,6 +113,22 @@ parser.add_argument('--num_test', type=int, default=2048,
 
 parser.add_argument('--Nt', type=int, default=64,
                     help='Number of random target scatter components')
+
+# Radar-related arguments
+parser.add_argument('--f0', nargs='+', type=float, default=[60e9, 77e9],
+                    help='Starting frequency of each radar')
+
+parser.add_argument('--K', type=float, default=124.996e12,
+                    help='Slope of FMCW chirp')
+
+parser.add_argument('--Nk', nargs='+', type=int, default=[64, 64],
+                    help='Number of samples per chirp')
+
+parser.add_argument('--Nk_fb', type=int, default=336,
+                    help='Number of samples of the full-band chirp')
+
+parser.add_argument('--fS', type=float, default=2000e3,
+                    help='ADC sample rate')
 
 # Parse the arguments
 args = parser.parse_args()

@@ -3,11 +3,12 @@ import torch
 from cvtorch import CVTensor
 import cvtorch.nn as cvnn
 
+from radar import MultiRadar
 from model.kRNet import kRNet
 from util.option import args
 from util.loss import Loss
 
-from model.SSCANet import SignalSelfCrossAttention
+from model.SSCANet import SignalSelfCrossAttention, SSCANet_Big, SSCANet_Small
     
 def test_complex_gradient():
     x = torch.ones(1, 1, 5, dtype=torch.complex64) + 1j*torch.ones(1, 1, 5, dtype=torch.complex64)
@@ -106,7 +107,7 @@ def test_SSCA():
     m = SignalSelfCrossAttention(n_head=8, d_model=32, d_k=64, d_v=64, dropout=0.0, kernel_size=3).to(args.device)
     
     Y = m(A, B)
-    print(A.shape, B.shape, Y.shape)
+    print('SSCA test input/output', A.shape, B.shape, Y.shape)
     
 def test_adaptive_pooling():
     x = torch.randn(64, 32, 336, dtype=torch.complex64).to(args.device)
@@ -115,7 +116,7 @@ def test_adaptive_pooling():
     m = cvnn.CVAdaptiveAvgPool1d(1).to(args.device)
     
     Y = m(X)
-    print(X.shape, Y.shape)
+    print('Adaptive pooling test input/output', X.shape, Y.shape)
     
 def test_CVECA():
     x = torch.randn(64, 32, 336, dtype=torch.complex64).to(args.device)
@@ -124,7 +125,17 @@ def test_CVECA():
     m = cvnn.CVECA(channels=32, b=1, gamma=2).to(args.device)
     
     Y = m(X)
-    print(X.shape, Y.shape)
+    print('CVECA test input/output', X.shape, Y.shape)
+    
+def test_SSCA_Net():
+    mr = MultiRadar(args)
+    x = torch.randn(40, 336, dtype=torch.complex64).to(args.device)
+    
+    m = SSCANet_Small(args, mr).to(args.device)
+    
+    y = m(x)
+    print('SSCA Net test input/output', x.shape, y.shape)
+    
 
 if __name__ == "__main__":
     #main_kRNet()
@@ -134,9 +145,11 @@ if __name__ == "__main__":
     
     #scaled_dot_product_attention()
     #multi_head_attention()
+    
     #test_SSCA()
+    test_SSCA_Net()
     
     #test_adaptive_pooling()
     
-    test_CVECA()
+    #test_CVECA()
 

@@ -62,8 +62,8 @@ class MultiRadarDataset(torch.utils.data.Dataset):
         return lr, hr
 
 class MultiRadarData:
-    def __init__(self, multiradar: MultiRadar, args: argparse.Namespace, snr_range=[3, 50]):
-        self.mr = multiradar
+    def __init__(self, args: argparse.Namespace, snr_range=[3, 50]):
+        self.mr = MultiRadar(args)
         self.args = args
         self.device = args.device
         self.snr_range = snr_range

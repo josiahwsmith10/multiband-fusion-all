@@ -88,17 +88,17 @@ class kRNet(nn.Module):
         
         # x is in R-domain
         x = self.head(x)
-        res = self.kr1(x).ifft_()
+        res = self.kr1(x).ifft()
         
         # res is in k-domain
-        res = self.kr2(res).fft_()
+        res = self.kr2(res).fft()
         
         # res is in R-domain
-        res = self.kr3(res).ifft_()
+        res = self.kr3(res).ifft()
         
         # res is in k-domain
         res = self.kr4(res)
-        res += x.ifft_()
+        res += x.ifft()
         
         return self.kr5(res).complex.squeeze(), None
         
@@ -133,7 +133,7 @@ class kNet(nn.Module):
         self.kr5 = kRBlock(conv=conv, in_channels=F, out_channels=out_channels, kernel_size=kernel_size, act=act, n_res_blocks=B)
         
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        x = CVTensor(x.real, x.imag).view(x.shape[0], 1, -1).ifft_()
+        x = CVTensor(x.real, x.imag).view(x.shape[0], 1, -1).ifft()
         
         # x is in k-domain
         x = self.head(x)
@@ -198,7 +198,7 @@ class RNet(nn.Module):
         res = self.kr4(res)
         res += x
         
-        return self.kr5(res).ifft_().complex.squeeze(), None
+        return self.kr5(res).ifft().complex.squeeze(), None
         
     def num_params(self):
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
@@ -239,24 +239,24 @@ class kRNet_v2(nn.Module):
         
         # x is in R-domain
         x = self.head(x)
-        intermediate.append(x.ifft_().clone().complex.mean(dim=1))
-        x = self.kr1(x).ifft_()
+        intermediate.append(x.ifft().clone().complex.mean(dim=1))
+        x = self.kr1(x).ifft()
         
         # x is in k-domain
         intermediate.append(x.clone().complex.mean(dim=1))
-        x = self.kr2(x).fft_()
+        x = self.kr2(x).fft()
         
         # x is in R-domain
-        intermediate.append(x.ifft_().clone().complex.mean(dim=1))
-        x = self.kr3(x).ifft_()
+        intermediate.append(x.ifft().clone().complex.mean(dim=1))
+        x = self.kr3(x).ifft()
         
         # res is in k-domain
         intermediate.append(x.clone().complex.mean(dim=1))
-        x = self.kr4(x).fft_()
+        x = self.kr4(x).fft()
         
         # x is in R-domain
-        intermediate.append(x.ifft_().clone().complex.mean(dim=1))
-        x = self.kr5(x).ifft_()
+        intermediate.append(x.ifft().clone().complex.mean(dim=1))
+        x = self.kr5(x).ifft()
         
         return x.complex.squeeze(), intermediate
         

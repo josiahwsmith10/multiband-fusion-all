@@ -1,26 +1,27 @@
 import torch
 import numpy as np
 from scipy.constants import pi, c
+import argparse
 
 from .radar import TIRadar
 
 class MultiRadar:
     """MultiRadar class."""
-    def __init__(self, f0=[], K=1e11, Nk=[], Nk_fb=200, fS=2e3):
+    def __init__(self, args: argparse.Namespace):
         # Check inputs
-        assert len(f0) == len(Nk)
+        assert len(args.f0) == len(args.Nk)
         
-        self.f0 = f0
-        self.K = K
-        self.Nk = Nk
-        self.Nk_fb = Nk_fb
-        self.fS = fS
+        self.f0 = args.f0
+        self.K = args.K
+        self.Nk = args.Nk
+        self.Nk_fb = args.Nk_fb
+        self.fS = args.fS
         
-        self.N_subbands = len(f0)
+        self.N_subbands = len(args.f0)
         
-        print(f"Total: \t\t{f0[0]*1e-9:.1f}-{(f0[0]+Nk_fb*K/fS)*1e-9:.1f} GHz")
-        for i, (f0_i, Nk_i) in enumerate(zip(f0, Nk)):
-            print(f"Subband {i+1}: \t{f0_i*1e-9:.1f}-{(f0_i+Nk_i*K/fS)*1e-9:.1f} GHz")
+        print(f"Total: \t\t{args.f0[0]*1e-9:.1f}-{(args.f0[0]+args.Nk_fb*args.K/args.fS)*1e-9:.1f} GHz")
+        for i, (f0_i, Nk_i) in enumerate(zip(args.f0, args.Nk)):
+            print(f"Subband {i+1}: \t{f0_i*1e-9:.1f}-{(f0_i+Nk_i*args.K/args.fS)*1e-9:.1f} GHz")
         
         self.Compute()
     
