@@ -5,8 +5,6 @@ import torch
 import torch.optim as optim
 import torch.optim.lr_scheduler as lrs
 
-from model import ComplexModel
-
 def min_max_norm(x: torch.Tensor, dim=-1) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Computes the magnitude min-max norm."""
     
@@ -23,7 +21,7 @@ def apply_linear_transform(x: torch.Tensor, a: torch.Tensor, b: torch.Tensor) ->
     """Applies a linear transformation to the input."""
     return a*x + b
 
-def make_optimizer(args: argparse.Namespace, target: ComplexModel):
+def make_optimizer(args: argparse.Namespace, target):
     '''
         make optimizer and scheduler together
     '''
@@ -77,3 +75,4 @@ def make_optimizer(args: argparse.Namespace, target: ComplexModel):
     optimizer = CustomOptimizer(trainable, **kwargs_optimizer)
     optimizer._register_scheduler(scheduler_class, **kwargs_scheduler)
     return optimizer
+

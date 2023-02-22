@@ -1,10 +1,9 @@
-import numpy as np
 import torch
 import torch.nn as nn
 from tqdm import tqdm
 import argparse
 
-from model.kRNet import kRNet, kNet, RNet
+from model.kRNet import kRNet, kRNet_v2, kNet, RNet
 
 class ComplexModel(nn.Module):
     def __init__(self, args: argparse.Namespace):
@@ -25,6 +24,9 @@ class ComplexModel(nn.Module):
         elif args.model.lower() == 'r-net':
             print('Making R-Net model...')
             self.model = RNet(args).to(self.device)
+        elif args.model.lower() == 'kr-net-v2':
+            print('Making kR-Net v2 model...')
+            self.model = kRNet_v2(args).to(self.device)
         else:
             assert False, 'Must use kR-Net model'
         
