@@ -13,7 +13,7 @@ from util.saver import SaveModel
 from util.common import make_optimizer
 
 class Trainer():
-    def __init__(self, args: argparse.Namespace, data: MultiRadarData, model: ComplexModel, loss: Loss, tb=True):
+    def __init__(self, args: argparse.Namespace, data: MultiRadarData, model: ComplexModel, loss: Loss):
         print('Making the trainer...')
         self.args = args
         
@@ -34,6 +34,7 @@ class Trainer():
         
         self.batches_per_epoch = len(self.loader_train)
         self.model = model.to(args.device)
+        self.model.add_multiradar(data.mr)
         self.loss = loss
         self.optimizer = make_optimizer(args, self.model)
         
@@ -48,7 +49,7 @@ class Trainer():
         self.save_path = "./saved/models/" + args.model_name + "/"
         os.mkdir(self.save_path)
         
-        if tb:
+        if args.use_tensorboard:
             print('Using tensorboard...')
             self.use_tensorboard = True
             

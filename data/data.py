@@ -34,6 +34,9 @@ class MultiRadarDataset(torch.utils.data.Dataset):
         self.Y = self.Y.to(device)
         
         return self
+    
+    def cpu(self) -> torch.utils.data.Dataset:
+        return self.to('cpu')
         
     def __len__(self):
         return self.N
@@ -71,10 +74,10 @@ class MultiRadarData:
         
     def create_generic_dataset(self) -> torch.utils.data.Dataset:        
         if self.args.xyz_str.lower() == 'xy':
-            return MultiRadarDataset(self.X, self.Y, self.args).to(self.device)
+            return MultiRadarDataset(self.X, self.Y, self.args)
             #return torch.utils.data.TensorDataset(self.X, self.Y)
         elif self.args.xyz_str.lower() == 'xz':
-            return MultiRadarDataset(self.X, self.Z, self.args).to(self.device)
+            return MultiRadarDataset(self.X, self.Z, self.args)
             #return torch.utils.data.TensorDataset(self.X, self.Z)
         
     def create_dataset_train(self, num_train: int, max_targets: int):
@@ -156,7 +159,7 @@ class MultiRadarData:
             
             x_LR[self.mr.LR_mask] += n
             
-            norm = x_LR[-1]
+            norm = x_LR[self.mr.idx[-1][-1]]
             x_LR = x_LR/norm
             
             # Normalize Phase
@@ -290,9 +293,11 @@ class MultiRadarData:
         data_save = torch.load(PATH)
         
         assert self.args.xyz_str == data_save['args'].xyz_str, 'xyz_str must be the same as saved data!'
-        self.dataset_train = data_save['dataset_train']
-        self.dataset_val = data_save['dataset_val']
-        self.dataset_test = data_save['dataset_test'] if 'dataset_test' in data_save else None
+        self.dataset_train = data_save['dataset_train'].cpu()
+        self.dataset_val = data_save['dataset_val'].cpu()
+        self.dataset_test = data_save['dataset_test'].cpu() if 'dataset_test' in data_save else None
+        
+        del data_save
         
         self.dataset_train.truncate(self.args.num_train)
         self.dataset_val.truncate(self.args.num_val)

@@ -38,13 +38,13 @@ parser.add_argument('--n_res_blocks', type=int, default=8,
                     help='Number of residual blocks')
 
 # Used for SSCA-Net
-parser.add_argument('--n_head', type=int, default=4,
+parser.add_argument('--n_heads', type=int, default=8,
                     help='Number of attention heads')
 
-parser.add_argument('--d_k', type=int, default=8,
+parser.add_argument('--d_k', type=int, default=64,
                     help='Dimension of key')
 
-parser.add_argument('--d_v', type=int, default=8,
+parser.add_argument('--d_v', type=int, default=64,
                     help='Dimension of value')
 
 parser.add_argument('--dropout', type=float, default=0.1,
@@ -130,6 +130,15 @@ parser.add_argument('--Nk_fb', type=int, default=336,
 parser.add_argument('--fS', type=float, default=2000e3,
                     help='ADC sample rate')
 
+# TensorBoard-related arguments
+parser.add_argument('--use_tensorboard', type=str, default='True',
+                    help='Boolean whether or not to use TensorBoard')
+
+# Default options
+parser.add_argument('--defaults', nargs='+', type=str, default=[''],
+                    help='''Defaults to use (kR-Net, SSCA-Net, default datasets, etc.).
+                    This overrides other arguments''')
+
 # Parse the arguments
 args = parser.parse_args()
 
@@ -139,8 +148,75 @@ for arg in vars(args):
     elif vars(args)[arg] == 'False':
         vars(args)[arg] = False
         
+#args.defaults = ['SSCA-Net-Big', '64ghz_1024_small']
+#args.use_tensorboard = False
+
+# Parse the defaults
+# First, datasets
+if any([val.lower() == "21ghz_336_large" for val in args.defaults]):
+    print("Using 21GHz_336_large dataset for SR")
+    args.dataset = "dataset_60GHz_77GHz_1048576_2048_Nt64.mrd"
+    args.num_train = 1048576
+    args.num_val = 2048
+    args.num_test = 2048
+    args.Nk_fb = 336
+if any([val.lower() == "21ghz_336_med" for val in args.defaults]):
+    print("Using 21GHz_336_med dataset for SR")
+    args.dataset = "dataset_60GHz_77GHz_16384_2048_Nt64.mrd"
+    args.num_train = 16384
+    args.num_val = 2048
+    args.num_test = 2048
+    args.Nk_fb = 336
+if any([val.lower() == "21ghz_336_small" for val in args.defaults]):
+    print("Using 21GHz_336_small dataset for SR")
+    args.dataset = "dataset_60GHz_77GHz_2048_1024_Nt64.mrd"
+    args.num_train = 2048
+    args.num_val = 1024
+    args.num_test = 1024
+    args.Nk_fb = 336
+if any([val.lower() == "64ghz_1024_large" for val in args.defaults]):
+    print("Using 64GHz_1024_large dataset for 16x SR")
+    args.dataset = "dataset_16x_1048576_2048_Nt64.mrd"
+    args.num_train = 1048576
+    args.num_val = 2048
+    args.num_test = 2048
+    args.Nk_fb = 1024
+if any([val.lower() == "64ghz_1024_med" for val in args.defaults]):
+    print("Using 64ghz_1024_med dataset for 16x SR")
+    args.dataset = "dataset_16x_16384_2048_Nt64.mrd"
+    args.num_train = 16384
+    args.num_val = 2048
+    args.num_test = 2048
+    args.Nk_fb = 1024
+if any([val.lower() == "64ghz_1024_small" for val in args.defaults]):
+    print("Using 64ghz_1024_small dataset for 16x SR")
+    args.dataset = "dataset_16x_2048_1024_Nt64.mrd"
+    args.num_train = 2048
+    args.num_val = 1024
+    args.num_test = 1024
+    args.Nk_fb = 1024
+    
+# Default models 
+if any([val.lower() == "ssca-net-big" for val in args.defaults]):
+    print("Using SSCA-Net (big) defaults")
+    args.model = "SSCA-Net-Big"
+    args.d_v = 8
+    args.d_k = 8
+    args.n_heads = 8
+    args.n_feats = 8
+    args.batch_size = 512
+    
+# Set dataset type
+if args.Nk_fb == 336:
+    args.dataset_type = "60GHz_77GHz"
+elif args.Nk_fb == 1024:
+    args.dataset_type = "16x"
+        
 # Add cuda device
 args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-args.model_name = datetime.now().strftime('%Y-%m-%d') + '_' + args.model + '_' + uuid4().hex[:8]
+# Create descriptive model name
+args.model_name = datetime.now().strftime('%Y-%m-%d') + '_' + args.model + '_' + \
+    args.dataset_type + '_' + uuid4().hex[:4]
+
 

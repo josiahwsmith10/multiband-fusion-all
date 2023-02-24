@@ -2,8 +2,10 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 import argparse
+from radar import MultiRadar
 
 from model.kRNet import kRNet, kRNet_v2, kNet, RNet
+from model.SSCANet import SSCANet_Big, SSCANet_Small
 
 class ComplexModel(nn.Module):
     def __init__(self, args: argparse.Namespace):
@@ -27,17 +29,27 @@ class ComplexModel(nn.Module):
         elif args.model.lower() == 'kr-net-v2':
             print('Making kR-Net v2 model...')
             self.model = kRNet_v2(args).to(self.device)
+        elif args.model.lower() == 'ssca-net-big':
+            print('Making SSCA-Net model...')
+            self.model = SSCANet_Big(args).to(self.device)
+        elif args.model.lower() == 'ssca-net-small':
+            print('Making SSCA-Net model...')
+            self.model = SSCANet_Small(args).to(self.device)
         else:
             assert False, 'Must use kR-Net model'
         
         if args.precision.lower() == 'half':
             self.model.half()
             
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         if self.training:
             return self.model(x)
         else:
             return self.model.forward(x)
+        
+    def add_multiradar(self, mr: MultiRadar) -> None:
+        if isinstance(self.model, (SSCANet_Big, SSCANet_Small)):
+            self.model.mr = mr
         
     def run_sar_data(self, sar_data_LR, N_batch=None):
         def min_max_norm(x, dim):

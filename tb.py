@@ -127,14 +127,23 @@ def test_CVECA():
     Y = m(X)
     print('CVECA test input/output', X.shape, Y.shape)
     
-def test_SSCA_Net():
+def test_SSCA_Net_Small():
     mr = MultiRadar(args)
     x = torch.randn(40, 336, dtype=torch.complex64).to(args.device)
     
     m = SSCANet_Small(args, mr).to(args.device)
     
     y = m(x)
-    print('SSCA Net test input/output', x.shape, y.shape)
+    print('SSCA Net Small test input/output', x.shape, y.shape, type(y))
+    
+def test_SSCA_Net_Big():
+    mr = MultiRadar(args)
+    x = torch.randn(40, 336, dtype=torch.complex64).to(args.device)
+    
+    m = SSCANet_Big(args, mr).to(args.device)
+    
+    y = m(x)
+    print('SSCA Net Big test input/output', x.shape, y.shape, type(y))
     
 
 if __name__ == "__main__":
@@ -147,7 +156,8 @@ if __name__ == "__main__":
     #multi_head_attention()
     
     #test_SSCA()
-    test_SSCA_Net()
+    test_SSCA_Net_Small()
+    test_SSCA_Net_Big()
     
     #test_adaptive_pooling()
     
