@@ -40,7 +40,9 @@ class SignalSelfCrossAttention(nn.Module):
             n_heads, d_model, d_k, d_v, dropout, SoftMaxClass
         )
 
-        self.chan_attn = cvnn.EfficientChannelAttention1d(channels=d_model * 4, b=b, gamma=gamma)
+        self.chan_attn = cvnn.EfficientChannelAttention1d(
+            channels=d_model * 4, b=b, gamma=gamma
+        )
 
         self.conv = conv(
             in_channels=d_model,
@@ -117,8 +119,12 @@ class DualRadarFusion(nn.Module):
             gamma=gamma,
         )
 
-        self.R_CVECA = cvnn.EfficientChannelAttention1d(channels=d_model, b=b, gamma=gamma)
-        self.k_CVECA = cvnn.EfficientChannelAttention1d(channels=d_model, b=b, gamma=gamma)
+        self.R_CVECA = cvnn.EfficientChannelAttention1d(
+            channels=d_model, b=b, gamma=gamma
+        )
+        self.k_CVECA = cvnn.EfficientChannelAttention1d(
+            channels=d_model, b=b, gamma=gamma
+        )
 
     def forward(self, X1: torch.Tensor, X2: torch.Tensor) -> torch.Tensor:
         # X1, X2 are in R-domain

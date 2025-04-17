@@ -330,6 +330,8 @@ class MultiRadarData:
 
         self.dataset_train.truncate(self.args.num_train)
         self.dataset_val.truncate(self.args.num_val)
-        self.dataset_test.truncate(
-            self.args.num_test
-        ) if self.dataset_test is not None else None
+        (
+            self.dataset_test.truncate(self.args.num_test)
+            if self.dataset_test is not None
+            else None
+        )

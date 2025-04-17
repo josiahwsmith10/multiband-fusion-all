@@ -93,16 +93,17 @@ def test_SSCA_Net_Big():
 
     y = m(x)[0]
     print("SSCA Net Big test input/output", x.shape, y.shape, type(y))
-    
+
 
 def test_kRNet():
     mr = MultiRadar(args)
     x = torch.randn(40, mr.Nk_fb, dtype=torch.cfloat).to(args.device)
 
     m = kRNet(args).to(args.device)
-    
+
     y = m(x)[0]
     print("kRNet test input/output", x.shape, y.shape, type(y))
+
 
 if __name__ == "__main__":
     test_kRNet()

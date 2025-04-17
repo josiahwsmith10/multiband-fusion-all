@@ -1,1 +1,1 @@
-from .model import ComplexModel 
+from .model import ComplexModel

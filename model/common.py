@@ -9,7 +9,7 @@ def default_conv1d(*args, **kwargs) -> nn.Module:
             kwargs["padding"] = kwargs["kernel_size"] // 2
         else:
             kwargs["padding"] = args[2] // 2
-            
+
     return cvnn.Conv1d(*args, **kwargs)
 
 
