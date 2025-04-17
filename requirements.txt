@@ -1,0 +1,2 @@
+complextorch>=1.1.11
+tensorboard

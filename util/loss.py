@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-import cvtorch.nn as cvnn
-from cvtorch.nn import SplitL1, SplitMSE, PerpLossSSIM
+import complextorch.nn as cvnn
+from complextorch.nn import SplitL1, SplitMSE, PerpLossSSIM
 
 
 class Loss(nn.modules.loss._Loss):

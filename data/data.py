@@ -130,9 +130,9 @@ class MultiRadarData:
         def linear_power(x, N):
             return torch.sqrt(1 / N * torch.sum(torch.abs(x) ** 2))
 
-        X = torch.zeros((num, self.mr.Nk_fb), dtype=torch.complex64)
-        Y = torch.zeros((num, self.mr.Nk_fb), dtype=torch.complex64)
-        Z = torch.zeros((num, self.mr.Nk_fb), dtype=torch.complex64)
+        X = torch.zeros((num, self.mr.Nk_fb), dtype=torch.cfloat)
+        Y = torch.zeros((num, self.mr.Nk_fb), dtype=torch.cfloat)
+        Z = torch.zeros((num, self.mr.Nk_fb), dtype=torch.cfloat)
         SNR = np.zeros(num)
 
         k = self.mr.k_HR.reshape((1, self.mr.Nk_fb))
@@ -142,7 +142,7 @@ class MultiRadarData:
             SNR[ind_num] = self.snr_range[0] + (
                 self.snr_range[1] - self.snr_range[0]
             ) * np.random.rand(1)
-            n = torch.randn((self.mr.N_LR), dtype=torch.complex64)
+            n = torch.randn((self.mr.N_LR), dtype=torch.cfloat)
             n_pow = linear_power(n, self.mr.N_LR)
 
             # Handle signal

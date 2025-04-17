@@ -3,12 +3,12 @@ import torch.nn as nn
 import argparse
 from typing import Tuple
 
-import cvtorch
-from cvtorch import CVTensor
-import cvtorch.nn as cvnn
+import complextorch.nn as cvnn
 
-from model.common import select_act
+from model.common import select_act, default_conv1d
 from model.kRNet import kRBlock
+from radar import MultiRadar
+import radar
 
 
 class SignalSelfCrossAttention(nn.Module):
@@ -20,27 +20,27 @@ class SignalSelfCrossAttention(nn.Module):
         d_v: int,
         dropout: float = 0.1,
         SoftMaxClass=cvnn.MagMinMaxNorm,
-        conv=cvnn.default_cvconv1d,
+        conv=default_conv1d,
         kernel_size=3,
         b=1,
         gamma=2,
     ):
         super(SignalSelfCrossAttention, self).__init__()
 
-        self.AA = cvnn.CVMultiheadAttention(
+        self.AA = cvnn.MultiheadAttention(
             n_heads, d_model, d_k, d_v, dropout, SoftMaxClass
         )
-        self.AB = cvnn.CVMultiheadAttention(
+        self.AB = cvnn.MultiheadAttention(
             n_heads, d_model, d_k, d_v, dropout, SoftMaxClass
         )
-        self.BA = cvnn.CVMultiheadAttention(
+        self.BA = cvnn.MultiheadAttention(
             n_heads, d_model, d_k, d_v, dropout, SoftMaxClass
         )
-        self.BB = cvnn.CVMultiheadAttention(
+        self.BB = cvnn.MultiheadAttention(
             n_heads, d_model, d_k, d_v, dropout, SoftMaxClass
         )
 
-        self.chan_attn = cvnn.CVECA(channels=d_model * 4, b=b, gamma=gamma)
+        self.chan_attn = cvnn.EfficientChannelAttention1d(channels=d_model * 4, b=b, gamma=gamma)
 
         self.conv = conv(
             in_channels=d_model,
@@ -49,7 +49,7 @@ class SignalSelfCrossAttention(nn.Module):
             bias=False,
         )
 
-    def forward(self, A: CVTensor, B: CVTensor):
+    def forward(self, A: torch.Tensor, B: torch.Tensor):
         A, B = A.transpose(1, 2), B.transpose(1, 2)
 
         W = self.AA(A, A, A)
@@ -57,7 +57,7 @@ class SignalSelfCrossAttention(nn.Module):
         Y = self.AB(A, B, B)
         Z = self.BA(B, A, A)
 
-        X = cvtorch.cat((W, X, Y, Z), dim=1).transpose(1, 2)
+        X = torch.cat((W, X, Y, Z), dim=1).transpose(1, 2)
 
         X = self.chan_attn(X)
 
@@ -117,18 +117,18 @@ class DualRadarFusion(nn.Module):
             gamma=gamma,
         )
 
-        self.R_CVECA = cvnn.CVECA(channels=d_model, b=b, gamma=gamma)
-        self.k_CVECA = cvnn.CVECA(channels=d_model, b=b, gamma=gamma)
+        self.R_CVECA = cvnn.EfficientChannelAttention1d(channels=d_model, b=b, gamma=gamma)
+        self.k_CVECA = cvnn.EfficientChannelAttention1d(channels=d_model, b=b, gamma=gamma)
 
-    def forward(self, X1: CVTensor, X2: CVTensor) -> CVTensor:
+    def forward(self, X1: torch.Tensor, X2: torch.Tensor) -> torch.Tensor:
         # X1, X2 are in R-domain
         X1, X2 = self.head1(X1), self.head2(X2)
 
         R = self.R_SSCA(X1, X2)
-        k = self.k_SSCA(X1.ifft(), X2.ifft())
+        k = self.k_SSCA(radar.ifft(X1), radar.ifft(X2))
 
-        R = cvtorch.cat((R, k.fft()), dim=1)
-        k = cvtorch.cat((k, R[:, : self.d_model].ifft()), dim=1)
+        R = torch.cat((R, radar.fft(k)), dim=1)
+        k = torch.cat((k, radar.ifft(R[:, : self.d_model])), dim=1)
 
         R = self.R_CVECA(R)
         k = self.k_CVECA(k)
@@ -139,15 +139,15 @@ class DomainFusion(DualRadarFusion):
     def __init__(self, *args, **kwargs):
         super(DomainFusion, self).__init__(*args, **kwargs)
 
-    def forward(self, X1: CVTensor, X2: CVTensor) -> CVTensor:
+    def forward(self, X1: torch.Tensor, X2: torch.Tensor) -> torch.Tensor:
         # X1 is in R-domain, X2 is in k-domain
         X1, X2 = self.head1(X1), self.head2(X2)
 
-        R = self.R_SSCA(X1, X2.fft())
-        k = self.k_SSCA(X1.ifft(), X2)
+        R = self.R_SSCA(X1, radar.fft(X2))
+        k = self.k_SSCA(radar.ifft(X1), X2)
 
-        R = cvtorch.cat((R, k.fft()), dim=1)
-        k = cvtorch.cat((k, R[:, : self.d_model].ifft()), dim=1)
+        R = torch.cat((R, radar.fft(k)), dim=1)
+        k = torch.cat((k, radar.ifft(R[:, : self.d_model])), dim=1)
 
         R = self.R_CVECA(R)
         k = self.k_CVECA(k)
@@ -159,7 +159,7 @@ class RefinementBlock(nn.Module):
 
     def __init__(
         self,
-        conv=cvnn.default_cvconv1d,
+        conv=default_conv1d,
         in_channels=32,
         out_channels=32,
         kernel_size=3,
@@ -195,14 +195,14 @@ class RefinementBlock(nn.Module):
             n_res_blocks=n_res_blocks,
         )
 
-    def forward(self, x: CVTensor) -> CVTensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x is in R-domain
-        res = self.kr1(x).ifft()
+        res = radar.ifft(self.kr1(x))
 
         # res is in k-domain
         res = self.kr2(res)
 
-        res += x.ifft()
+        res += radar.ifft(x)
 
         return self.kr3(res)
 
@@ -213,13 +213,14 @@ class SSCANet_Small(nn.Module):
     def __init__(
         self,
         args: argparse.Namespace,
-        conv=cvnn.default_cvconv1d,
+        mr: MultiRadar,
+        conv=default_conv1d,
         SoftMaxClass=cvnn.MagMinMaxNorm,
     ):
         super(SSCANet_Small, self).__init__()
 
         self.args = args
-        self.mr = None
+        self.mr = mr
 
         self.act = select_act(args)
 
@@ -267,14 +268,11 @@ class SSCANet_Small(nn.Module):
         X1 = x[:, self.mr.idx[0]].unsqueeze(1)
         X2 = x[:, self.mr.idx[1]].unsqueeze(1)
 
-        X1 = CVTensor(X1.real, X1.imag)
-        X2 = CVTensor(X2.real, X2.imag)
-
         A_R, A_k = self.dual_radar_fusion(X1, X2)
 
         # Concatenate features in k-domain
-        X = cvtorch.cat((A_R.ifft(), A_k), dim=1)
-        return self.refinement(X).complex.squeeze(), None
+        X = torch.cat((radar.ifft(A_R), A_k), dim=1)
+        return self.refinement(X).squeeze(), None
 
 
 class SSCANet_Big(nn.Module):
@@ -283,13 +281,14 @@ class SSCANet_Big(nn.Module):
     def __init__(
         self,
         args: argparse.Namespace,
-        conv=cvnn.default_cvconv1d,
+        mr: MultiRadar,
+        conv=default_conv1d,
         SoftMaxClass=cvnn.MagMinMaxNorm,
     ):
         super(SSCANet_Big, self).__init__()
 
         self.args = args
-        self.mr = None
+        self.mr = mr
 
         self.act = select_act(args)
 
@@ -351,13 +350,10 @@ class SSCANet_Big(nn.Module):
         X1 = x[:, self.mr.idx[0]].unsqueeze(1)
         X2 = x[:, self.mr.idx[1]].unsqueeze(1)
 
-        X1 = CVTensor(X1.real, X1.imag)
-        X2 = CVTensor(X2.real, X2.imag)
-
         A_R, A_k = self.dual_radar_fusion(X1, X2)
 
         B_R, B_k = self.domain_fusion(A_R, A_k)
 
         # Concatenate features in k-domain
-        X = cvtorch.cat((B_R.ifft(), B_k), dim=1)
-        return self.refinement(X).complex.squeeze(), None
+        X = torch.cat((radar.ifft(B_R), B_k), dim=1)
+        return self.refinement(X).squeeze(), None

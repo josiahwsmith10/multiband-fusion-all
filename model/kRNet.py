@@ -4,10 +4,10 @@ import torch.nn as nn
 import argparse
 from typing import Tuple
 
-from cvtorch import CVTensor
-import cvtorch.nn as cvnn
+import complextorch.nn as cvnn
 
-from model.common import select_act
+from model.common import select_act, default_conv1d
+import radar
 
 
 class ComplexValuedResBlock(nn.Module):
@@ -30,7 +30,7 @@ class ComplexValuedResBlock(nn.Module):
         self.body = nn.Sequential(*m)
         self.res_scale = res_scale
 
-    def forward(self, x: CVTensor) -> CVTensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Complex residual block forward
         res = self.body(x) * self.res_scale
         res += x
@@ -64,14 +64,14 @@ class kRBlock(nn.Module):
 
         self.body = nn.Sequential(*m)
 
-    def forward(self, x: CVTensor) -> CVTensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.body(x)
 
 
 class kRNet(nn.Module):
     """kR-Net model architecture following paper Fig. 4."""
 
-    def __init__(self, args: argparse.Namespace, conv=cvnn.default_cvconv1d):
+    def __init__(self, args: argparse.Namespace, conv=default_conv1d):
         super(kRNet, self).__init__()
 
         self.args = args
@@ -133,23 +133,23 @@ class kRNet(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        x = CVTensor(x.real, x.imag).view(x.shape[0], 1, -1)
+        x = x.view(x.shape[0], 1, -1)
 
         # x is in R-domain
         x = self.head(x)
-        res = self.kr1(x).ifft()
+        res = radar.ifft(self.kr1(x))
 
         # res is in k-domain
-        res = self.kr2(res).fft()
+        res = radar.fft(self.kr2(res))
 
         # res is in R-domain
-        res = self.kr3(res).ifft()
+        res = radar.ifft(self.kr3(res))
 
         # res is in k-domain
         res = self.kr4(res)
-        res += x.ifft()
+        res += radar.ifft(x)
 
-        return self.kr5(res).complex.squeeze(), None
+        return self.kr5(res).squeeze(), None
 
     def num_params(self):
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
@@ -159,7 +159,7 @@ class kRNet(nn.Module):
 class kNet(nn.Module):
     """k-Net model architecture."""
 
-    def __init__(self, args: argparse.Namespace, conv=cvnn.default_cvconv1d):
+    def __init__(self, args: argparse.Namespace, conv=default_conv1d):
         super(kNet, self).__init__()
 
         self.args = args
@@ -221,7 +221,7 @@ class kNet(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        x = CVTensor(x.real, x.imag).view(x.shape[0], 1, -1).ifft()
+        x = torch.fft.ifft(x.view(x.shape[0], 1, -1), dim=-1, norm="ortho")
 
         # x is in k-domain
         x = self.head(x)
@@ -237,7 +237,7 @@ class kNet(nn.Module):
         res = self.kr4(res)
         res += x
 
-        return self.kr5(res).complex.squeeze(), None
+        return self.kr5(res).squeeze(), None
 
     def num_params(self):
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
@@ -247,7 +247,7 @@ class kNet(nn.Module):
 class RNet(nn.Module):
     """R-Net model architecture."""
 
-    def __init__(self, args: argparse.Namespace, conv=cvnn.default_cvconv1d):
+    def __init__(self, args: argparse.Namespace, conv=default_conv1d):
         super(RNet, self).__init__()
 
         self.args = args
@@ -309,7 +309,7 @@ class RNet(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        x = CVTensor(x.real, x.imag).view(x.shape[0], 1, -1)
+        x = x.view(x.shape[0], 1, -1)
 
         # x is in R-domain
         x = self.head(x)
@@ -325,7 +325,7 @@ class RNet(nn.Module):
         res = self.kr4(res)
         res += x
 
-        return self.kr5(res).ifft().complex.squeeze(), None
+        return radar.ifft(self.kr5(res)).squeeze(), None
 
     def num_params(self):
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
@@ -335,7 +335,7 @@ class RNet(nn.Module):
 class kRNet_v2(nn.Module):
     """kR-Net model v2 architecture."""
 
-    def __init__(self, args: argparse.Namespace, conv=cvnn.default_cvconv1d):
+    def __init__(self, args: argparse.Namespace, conv=default_conv1d):
         super(kRNet_v2, self).__init__()
 
         self.args = args
@@ -397,7 +397,7 @@ class kRNet_v2(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        x = CVTensor(x.real, x.imag).view(x.shape[0], 1, -1)
+        x = x.view(x.shape[0], 1, -1)
 
         # Intermediate representations in k-domain
         # TODO: ISSUE: how to store the intermediate representations since they have more channels than the input?
@@ -405,26 +405,26 @@ class kRNet_v2(nn.Module):
 
         # x is in R-domain
         x = self.head(x)
-        intermediate.append(x.ifft().clone().complex.mean(dim=1))
-        x = self.kr1(x).ifft()
+        intermediate.append(radar.ifft(x).clone().mean(dim=1))
+        x = radar.ifft(self.kr1(x))
 
         # x is in k-domain
-        intermediate.append(x.clone().complex.mean(dim=1))
-        x = self.kr2(x).fft()
+        intermediate.append(x.clone().mean(dim=1))
+        x = radar.fft(self.kr2(x))
 
         # x is in R-domain
-        intermediate.append(x.ifft().clone().complex.mean(dim=1))
-        x = self.kr3(x).ifft()
+        intermediate.append(radar.ifft(x).clone().mean(dim=1))
+        x = radar.ifft(self.kr3(x))
 
         # res is in k-domain
-        intermediate.append(x.clone().complex.mean(dim=1))
-        x = self.kr4(x).fft()
+        intermediate.append(x.clone().mean(dim=1))
+        x = radar.fft(self.kr4(x))
 
         # x is in R-domain
-        intermediate.append(x.ifft().clone().complex.mean(dim=1))
-        x = self.kr5(x).ifft()
+        intermediate.append(radar.ifft(x).clone().mean(dim=1))
+        x = radar.ifft(self.kr5(x))
 
-        return x.complex.squeeze(), intermediate
+        return x.squeeze(), intermediate
 
     def num_params(self):
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
