@@ -1,3 +1,4 @@
+import os
 import torch
 from scipy.constants import pi
 import numpy as np
@@ -305,6 +306,7 @@ class MultiRadarData:
                 test_one(int(user_input))
 
     def Save(self, PATH):
+        os.makedirs("saved/data", exist_ok=True)
         data_save = {
             "args": self.args,
             "dataset_train": self.dataset_train,

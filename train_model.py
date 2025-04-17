@@ -19,7 +19,7 @@ def main():
         t = Trainer(args, data=d, model=m, loss=l)
     else:
         s = Saver()
-        args, m, l, t = s.Load(
+        _, m, l, t = s.Load(
             args, d, ComplexModel, Loss, Trainer, "./saved/models/" + args.checkpoint
         )
 

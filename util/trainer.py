@@ -58,7 +58,7 @@ class Trainer:
 
         # Create directory to save model checkpoints
         self.save_path = "./saved/models/" + args.model_name + "/"
-        os.mkdir(self.save_path)
+        os.makedirs(self.save_path)
 
         if args.use_tensorboard:
             print("Using tensorboard...")

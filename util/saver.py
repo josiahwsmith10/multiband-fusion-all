@@ -1,3 +1,4 @@
+import os
 import torch
 import argparse
 
@@ -21,7 +22,7 @@ def SaveModel(args: argparse.Namespace, model: ComplexModel, loss, trainer, PATH
 
 class Saver:
     def __init__(self):
-        pass
+        os.makedirs("saved/models", exist_ok=True)
 
     def Save(
         self, args: argparse.Namespace, model: ComplexModel, loss, trainer, PATH: str

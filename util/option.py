@@ -194,9 +194,6 @@ for arg in vars(args):
     elif vars(args)[arg] == "False":
         vars(args)[arg] = False
 
-# args.defaults = ['SSCA-Net-Big', '64ghz_1024_small']
-# args.use_tensorboard = False
-
 # Parse the defaults
 # First, datasets
 if any([val.lower() == "21ghz_336_large" for val in args.defaults]):
