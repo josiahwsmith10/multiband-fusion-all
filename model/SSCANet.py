@@ -3,7 +3,7 @@ import torch.nn as nn
 import argparse
 from typing import Tuple
 
-import complextorch.nn as cvnn
+import complextorch.nn as ctnn
 
 from model.common import select_act_module, default_conv1d
 from model.kRNet import kRBlock
@@ -19,7 +19,7 @@ class SignalSelfCrossAttention(nn.Module):
         d_k: int,
         d_v: int,
         dropout: float = 0.1,
-        SoftMaxClass=cvnn.MagMinMaxNorm,
+        SoftMaxClass=ctnn.MagMinMaxNorm,
         conv=default_conv1d,
         kernel_size=3,
         b=1,
@@ -27,20 +27,20 @@ class SignalSelfCrossAttention(nn.Module):
     ):
         super(SignalSelfCrossAttention, self).__init__()
 
-        self.AA = cvnn.MultiheadAttention(
+        self.AA = ctnn.MultiheadAttention(
             n_heads, d_model, d_k, d_v, dropout, SoftMaxClass
         )
-        self.AB = cvnn.MultiheadAttention(
+        self.AB = ctnn.MultiheadAttention(
             n_heads, d_model, d_k, d_v, dropout, SoftMaxClass
         )
-        self.BA = cvnn.MultiheadAttention(
+        self.BA = ctnn.MultiheadAttention(
             n_heads, d_model, d_k, d_v, dropout, SoftMaxClass
         )
-        self.BB = cvnn.MultiheadAttention(
+        self.BB = ctnn.MultiheadAttention(
             n_heads, d_model, d_k, d_v, dropout, SoftMaxClass
         )
 
-        self.chan_attn = cvnn.EfficientChannelAttention1d(
+        self.chan_attn = ctnn.EfficientChannelAttention1d(
             channels=d_model * 4, b=b, gamma=gamma
         )
 
@@ -119,10 +119,10 @@ class DualRadarFusion(nn.Module):
             gamma=gamma,
         )
 
-        self.R_CVECA = cvnn.EfficientChannelAttention1d(
+        self.R_CVECA = ctnn.EfficientChannelAttention1d(
             channels=d_model, b=b, gamma=gamma
         )
-        self.k_CVECA = cvnn.EfficientChannelAttention1d(
+        self.k_CVECA = ctnn.EfficientChannelAttention1d(
             channels=d_model, b=b, gamma=gamma
         )
 
@@ -169,7 +169,7 @@ class RefinementBlock(nn.Module):
         in_channels=32,
         out_channels=32,
         kernel_size=3,
-        act_module=cvnn.CPReLU,
+        act_module=ctnn.CPReLU,
         n_res_blocks=8,
     ):
         super(RefinementBlock, self).__init__()
@@ -221,7 +221,7 @@ class SSCANet_Small(nn.Module):
         args: argparse.Namespace,
         mr: MultiRadar,
         conv=default_conv1d,
-        SoftMaxClass=cvnn.MagMinMaxNorm,
+        SoftMaxClass=ctnn.MagMinMaxNorm,
     ):
         super(SSCANet_Small, self).__init__()
 
@@ -289,7 +289,7 @@ class SSCANet_Big(nn.Module):
         args: argparse.Namespace,
         mr: MultiRadar,
         conv=default_conv1d,
-        SoftMaxClass=cvnn.MagMinMaxNorm,
+        SoftMaxClass=ctnn.MagMinMaxNorm,
     ):
         super(SSCANet_Big, self).__init__()
 

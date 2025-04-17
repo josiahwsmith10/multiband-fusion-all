@@ -1,6 +1,6 @@
 import torch
 
-import complextorch.nn as cvnn
+import complextorch.nn as ctnn
 
 from radar import MultiRadar
 from model.kRNet import kRNet
@@ -28,7 +28,7 @@ def test_advanced_loss():
 def scaled_dot_product_attention():
     X = torch.randn(64, 336, 128, dtype=torch.cfloat)
 
-    m = cvnn.ScaledDotProductAttention(1, attn_dropout=0.0)
+    m = ctnn.ScaledDotProductAttention(1, attn_dropout=0.0)
 
     Y = m(X, X, X)
     print(X.shape, Y.shape)
@@ -37,7 +37,7 @@ def scaled_dot_product_attention():
 def multi_head_attention():
     X = torch.randn(64, 336, 128, dtype=torch.cfloat).to(args.device)
 
-    m = cvnn.MultiheadAttention(n_heads=8, d_model=128, d_k=64, d_v=64, dropout=0.0).to(
+    m = ctnn.MultiheadAttention(n_heads=8, d_model=128, d_k=64, d_v=64, dropout=0.0).to(
         args.device
     )
 
@@ -60,7 +60,7 @@ def test_SSCA():
 def test_adaptive_pooling():
     X = torch.randn(64, 32, 336, dtype=torch.cfloat).to(args.device)
 
-    m = cvnn.AdaptiveAvgPool1d(1).to(args.device)
+    m = ctnn.AdaptiveAvgPool1d(1).to(args.device)
 
     Y = m(X)
     print("Adaptive pooling test input/output", X.shape, Y.shape)
@@ -69,7 +69,7 @@ def test_adaptive_pooling():
 def test_CVECA():
     X = torch.randn(64, 32, 336, dtype=torch.cfloat).to(args.device)
 
-    m = cvnn.EfficientChannelAttention1d(channels=32, b=1, gamma=2).to(args.device)
+    m = ctnn.EfficientChannelAttention1d(channels=32, b=1, gamma=2).to(args.device)
 
     Y = m(X)
     print("CVECA test input/output", X.shape, Y.shape)

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-import complextorch.nn as cvnn
+import complextorch.nn as ctnn
 from complextorch.nn import SplitL1, SplitMSE, PerpLossSSIM
 
 
@@ -34,11 +34,11 @@ class Loss(nn.modules.loss._Loss):
                 benchmark_loss = False
 
             if loss_type == "SMSE":
-                loss_function = cvnn.SplitMSE()
+                loss_function = ctnn.SplitMSE()
             elif loss_type == "SL1":
-                loss_function = cvnn.SplitL1()
+                loss_function = ctnn.SplitL1()
             elif loss_type == "PerpSSIM":
-                loss_function = cvnn.PerpLossSSIM()
+                loss_function = ctnn.PerpLossSSIM()
 
             if intermediate_loss:
                 loss_type = "i" + loss_type

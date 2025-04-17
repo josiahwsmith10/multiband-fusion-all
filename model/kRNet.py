@@ -4,7 +4,7 @@ import torch.nn as nn
 import argparse
 from typing import Tuple, Callable
 
-import complextorch.nn as cvnn
+import complextorch.nn as ctnn
 
 from model.common import select_act_module, default_conv1d
 import radar
@@ -19,7 +19,7 @@ class ComplexValuedResBlock(nn.Module):
         n_feats: int,
         kernel_size: int,
         bias: bool = False,
-        act_module: Callable = cvnn.CPReLU,
+        act_module: Callable = ctnn.CPReLU,
         res_scale: float = 1,
     ):
         super(ComplexValuedResBlock, self).__init__()
@@ -51,7 +51,7 @@ class kRBlock(nn.Module):
         out_channels: int,
         kernel_size: int,
         bias: bool = False,
-        act_module: Callable = cvnn.CPReLU,
+        act_module: Callable = ctnn.CPReLU,
         res_scale: float = 1,
         n_res_blocks: int = 8,
     ):
