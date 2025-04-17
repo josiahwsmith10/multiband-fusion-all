@@ -13,11 +13,11 @@ def default_conv1d(*args, **kwargs) -> nn.Module:
     return cvnn.Conv1d(*args, **kwargs)
 
 
-def select_act(args: argparse.Namespace):
+def select_act_module(args: argparse.Namespace):
     if args.act.lower() == "crelu":
-        act = cvnn.CReLU(True)
+        act_module = cvnn.CReLU
     elif args.act.lower() == "ctanh":
-        act = cvnn.CTanh()
+        act_module = cvnn.CTanh
     elif args.act.lower() == "cprelu":
-        act = cvnn.CPReLU()
-    return act
+        act_module = cvnn.CPReLU
+    return act_module

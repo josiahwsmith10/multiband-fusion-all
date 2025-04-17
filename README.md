@@ -28,6 +28,11 @@ python train_model.py --help
 Train using the small test dataset from above with a smaller model size than used in the paper
 ```bash
 python train_model.py --dataset dataset_60GHz_77GHz_1024_128_Nt64.mrd \
-    --n_feats 8 --n_res_blocks 2 --epochs 64
+    --n_feats 8 --n_res_blocks 2 --epochs 10 --lr 1e-2
 ```
 
+## Testing a Model
+```bash
+python test_model.py --checkpoint 2025-04-17_kR-Net_60GHz_77GHz_3ce4/epoch10_2025-04-17_kR-Net_60GHz_77GHz_3ce4.pt \
+    --n_feats 8 --n_res_blocks 2
+```

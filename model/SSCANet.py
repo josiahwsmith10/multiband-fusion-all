@@ -5,7 +5,7 @@ from typing import Tuple
 
 import complextorch.nn as cvnn
 
-from model.common import select_act, default_conv1d
+from model.common import select_act_module, default_conv1d
 from model.kRNet import kRBlock
 from radar import MultiRadar
 import radar
@@ -169,7 +169,7 @@ class RefinementBlock(nn.Module):
         in_channels=32,
         out_channels=32,
         kernel_size=3,
-        act=cvnn.CPReLU,
+        act_module=cvnn.CPReLU,
         n_res_blocks=8,
     ):
         super(RefinementBlock, self).__init__()
@@ -179,7 +179,7 @@ class RefinementBlock(nn.Module):
             in_channels=in_channels,
             out_channels=in_channels,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act_module,
             n_res_blocks=n_res_blocks,
         )
 
@@ -188,7 +188,7 @@ class RefinementBlock(nn.Module):
             in_channels=in_channels,
             out_channels=in_channels,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act_module,
             n_res_blocks=n_res_blocks,
         )
 
@@ -197,7 +197,7 @@ class RefinementBlock(nn.Module):
             in_channels=in_channels,
             out_channels=out_channels,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act_module,
             n_res_blocks=n_res_blocks,
         )
 
@@ -228,7 +228,7 @@ class SSCANet_Small(nn.Module):
         self.args = args
         self.mr = mr
 
-        self.act = select_act(args)
+        self.act = select_act_module(args)
 
         d_model = args.n_feats
         B = args.n_res_blocks
@@ -265,7 +265,7 @@ class SSCANet_Small(nn.Module):
             in_channels=4 * d_model,
             out_channels=out_channels,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
 
@@ -296,7 +296,7 @@ class SSCANet_Big(nn.Module):
         self.args = args
         self.mr = mr
 
-        self.act = select_act(args)
+        self.act = select_act_module(args)
 
         d_model = args.n_feats
         B = args.n_res_blocks
@@ -347,7 +347,7 @@ class SSCANet_Big(nn.Module):
             in_channels=4 * d_model,
             out_channels=out_channels,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
 

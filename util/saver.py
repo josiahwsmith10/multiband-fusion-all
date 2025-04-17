@@ -48,7 +48,7 @@ class Saver:
         TrainerClass,
         PATH: str,
     ):
-        checkpoint = torch.load(PATH)
+        checkpoint = torch.load(PATH, map_location=args.device)
 
         # Check that args are aligned with saved model
         args_old = checkpoint["args"]

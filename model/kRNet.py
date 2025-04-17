@@ -2,11 +2,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 import argparse
-from typing import Tuple
+from typing import Tuple, Callable
 
 import complextorch.nn as cvnn
 
-from model.common import select_act, default_conv1d
+from model.common import select_act_module, default_conv1d
 import radar
 
 
@@ -14,7 +14,13 @@ class ComplexValuedResBlock(nn.Module):
     """Complex-Valued Residual Block."""
 
     def __init__(
-        self, conv, n_feats, kernel_size, bias=False, act=cvnn.CPReLU(), res_scale=1
+        self,
+        conv: Callable,
+        n_feats: int,
+        kernel_size: int,
+        bias: bool = False,
+        act_module: Callable = cvnn.CPReLU,
+        res_scale: float = 1,
     ):
         super(ComplexValuedResBlock, self).__init__()
 
@@ -22,10 +28,7 @@ class ComplexValuedResBlock(nn.Module):
         for i in range(2):
             m.append(conv(n_feats, n_feats, kernel_size, bias=bias))
             if i == 0:
-                if type(act) == cvnn.CPReLU:
-                    m.append(cvnn.CPReLU())
-                else:
-                    m.append(act)
+                m.append(act_module())
 
         self.body = nn.Sequential(*m)
         self.res_scale = res_scale
@@ -43,20 +46,25 @@ class kRBlock(nn.Module):
 
     def __init__(
         self,
-        conv,
-        in_channels,
-        out_channels,
-        kernel_size,
-        bias=False,
-        act=cvnn.CPReLU(),
-        res_scale=1,
-        n_res_blocks=8,
+        conv: Callable,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        bias: bool = False,
+        act_module: Callable = cvnn.CPReLU,
+        res_scale: float = 1,
+        n_res_blocks: int = 8,
     ):
         super(kRBlock, self).__init__()
 
         m = [
             ComplexValuedResBlock(
-                conv, in_channels, kernel_size, bias=bias, act=act, res_scale=res_scale
+                conv,
+                in_channels,
+                kernel_size,
+                bias=bias,
+                act_module=act_module,
+                res_scale=res_scale,
             )
             for _ in range(n_res_blocks)
         ]
@@ -71,12 +79,12 @@ class kRBlock(nn.Module):
 class kRNet(nn.Module):
     """kR-Net model architecture following paper Fig. 4."""
 
-    def __init__(self, args: argparse.Namespace, conv=default_conv1d):
+    def __init__(self, args: argparse.Namespace, conv: Callable = default_conv1d):
         super(kRNet, self).__init__()
 
         self.args = args
 
-        self.act = select_act(args)
+        self.act_module = select_act_module(args)
 
         # Following paper notation
         F = args.n_feats
@@ -85,7 +93,7 @@ class kRNet(nn.Module):
         in_channels = args.in_channels
         out_channels = args.out_channels
         kernel_size = args.kernel_size
-        act = self.act
+        act_module = self.act_module
 
         self.head = conv(
             in_channels=in_channels, out_channels=F, kernel_size=kernel_size
@@ -96,7 +104,7 @@ class kRNet(nn.Module):
             in_channels=F,
             out_channels=F,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act_module,
             n_res_blocks=B,
         )
         self.kr2 = kRBlock(
@@ -104,7 +112,7 @@ class kRNet(nn.Module):
             in_channels=F,
             out_channels=F,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act_module,
             n_res_blocks=B,
         )
         self.kr3 = kRBlock(
@@ -112,7 +120,7 @@ class kRNet(nn.Module):
             in_channels=F,
             out_channels=F,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act_module,
             n_res_blocks=B,
         )
         self.kr4 = kRBlock(
@@ -120,7 +128,7 @@ class kRNet(nn.Module):
             in_channels=F,
             out_channels=F,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act_module,
             n_res_blocks=B,
         )
         self.kr5 = kRBlock(
@@ -128,7 +136,7 @@ class kRNet(nn.Module):
             in_channels=F,
             out_channels=out_channels,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act_module,
             n_res_blocks=B,
         )
 
@@ -159,12 +167,12 @@ class kRNet(nn.Module):
 class kNet(nn.Module):
     """k-Net model architecture."""
 
-    def __init__(self, args: argparse.Namespace, conv=default_conv1d):
+    def __init__(self, args: argparse.Namespace, conv: Callable = default_conv1d):
         super(kNet, self).__init__()
 
         self.args = args
 
-        self.act = select_act(args)
+        self.act = select_act_module(args)
 
         # Following paper notation
         F = args.n_feats
@@ -184,7 +192,7 @@ class kNet(nn.Module):
             in_channels=F,
             out_channels=F,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
         self.kr2 = kRBlock(
@@ -192,7 +200,7 @@ class kNet(nn.Module):
             in_channels=F,
             out_channels=F,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
         self.kr3 = kRBlock(
@@ -200,7 +208,7 @@ class kNet(nn.Module):
             in_channels=F,
             out_channels=F,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
         self.kr4 = kRBlock(
@@ -208,7 +216,7 @@ class kNet(nn.Module):
             in_channels=F,
             out_channels=F,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
         self.kr5 = kRBlock(
@@ -216,7 +224,7 @@ class kNet(nn.Module):
             in_channels=F,
             out_channels=out_channels,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
 
@@ -252,7 +260,7 @@ class RNet(nn.Module):
 
         self.args = args
 
-        self.act = select_act(args)
+        self.act = select_act_module(args)
 
         # Following paper notation
         F = args.n_feats
@@ -272,7 +280,7 @@ class RNet(nn.Module):
             in_channels=F,
             out_channels=F,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
         self.kr2 = kRBlock(
@@ -280,7 +288,7 @@ class RNet(nn.Module):
             in_channels=F,
             out_channels=F,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
         self.kr3 = kRBlock(
@@ -288,7 +296,7 @@ class RNet(nn.Module):
             in_channels=F,
             out_channels=F,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
         self.kr4 = kRBlock(
@@ -296,7 +304,7 @@ class RNet(nn.Module):
             in_channels=F,
             out_channels=F,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
         self.kr5 = kRBlock(
@@ -304,7 +312,7 @@ class RNet(nn.Module):
             in_channels=F,
             out_channels=out_channels,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
 
@@ -340,7 +348,7 @@ class kRNet_v2(nn.Module):
 
         self.args = args
 
-        self.act = select_act(args)
+        self.act = select_act_module(args)
 
         # Following paper notation
         F = args.n_feats
@@ -360,7 +368,7 @@ class kRNet_v2(nn.Module):
             in_channels=F,
             out_channels=F,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
         self.kr2 = kRBlock(
@@ -368,7 +376,7 @@ class kRNet_v2(nn.Module):
             in_channels=F,
             out_channels=F,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
         self.kr3 = kRBlock(
@@ -376,7 +384,7 @@ class kRNet_v2(nn.Module):
             in_channels=F,
             out_channels=F,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
         self.kr4 = kRBlock(
@@ -384,7 +392,7 @@ class kRNet_v2(nn.Module):
             in_channels=F,
             out_channels=F,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
         self.kr5 = kRBlock(
@@ -392,7 +400,7 @@ class kRNet_v2(nn.Module):
             in_channels=F,
             out_channels=out_channels,
             kernel_size=kernel_size,
-            act=act,
+            act_module=act,
             n_res_blocks=B,
         )
 
